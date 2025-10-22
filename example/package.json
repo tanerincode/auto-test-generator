@@ -1,0 +1,20 @@
+{
+  "name": "autotest-example",
+  "version": "1.0.0",
+  "description": "Example project for autotest tool",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": ["test", "jest"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.2.2"
+  }
+}
+

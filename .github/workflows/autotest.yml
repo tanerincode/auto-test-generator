@@ -1,0 +1,52 @@
+name: autotest-dry-run
+
+on:
+  pull_request:
+    paths:
+      - 'src/**/*.ts'
+      - 'src/**/*.tsx'
+      - 'app/**/*.ts'
+      - 'app/**/*.tsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'yarn.lock'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  autotest:
+    runs-on: ubuntu-latest
+    name: Auto-generate tests (dry-run)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build autotest
+        run: |
+          cd tools/autotest-go
+          make build
+
+      - name: Run autotest (dry-run)
+        run: |
+          cd tools/autotest-go
+          ./bin/autotest -changed-only -dry-run -root ../../
+
+      - name: Comment on PR (if tests would be generated)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **autotest**: Tests would be generated for changed files. Run `./autotest -changed-only` locally to generate them.'
+            })
+
