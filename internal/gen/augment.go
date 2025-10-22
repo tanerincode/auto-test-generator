@@ -1,13 +1,13 @@
 package gen
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"bytes"
 )
 
 // AugmentCodeAnalysis represents the analysis result from Augment CLI
@@ -247,27 +247,63 @@ func LoginToAuggie() error {
 	return nil
 }
 
-// EnsureAuggieCLIInstalled checks if Auggie CLI is installed, and installs it if not
+// EnsureAuggieCLIInstalled checks if Auggie CLI is installed, and offers to install if not
 func EnsureAuggieCLIInstalled() error {
 	// Check if auggie is already installed
 	cmd := exec.Command("auggie", "--version")
 	if err := cmd.Run(); err == nil {
 		// Already installed
+		fmt.Println("✓ Auggie CLI is already installed")
 		return nil
 	}
 
-	fmt.Println("📦 Auggie CLI not found. Installing...")
+	// Auggie CLI not found, ask user if they want to install
+	fmt.Println("❌ Auggie CLI not found")
+	fmt.Println("\nAuggie CLI is required for AI-powered test generation.")
+	fmt.Print("\nWould you like to install Auggie CLI now? (y/n): ")
+
+	var response string
+	fmt.Scanln(&response)
+
+	response = strings.ToLower(strings.TrimSpace(response))
+	if response != "y" && response != "yes" {
+		return fmt.Errorf("auggie CLI is required. Install manually with: npm install -g @augmentcode/auggie")
+	}
+
+	// Attempt to install Auggie CLI
+	return installAuggieCLI()
+}
+
+// installAuggieCLI installs Auggie CLI via npm
+func installAuggieCLI() error {
+	fmt.Println("\n📦 Installing Auggie CLI...")
+
+	// Check if npm is available
+	npmCheck := exec.Command("npm", "--version")
+	if err := npmCheck.Run(); err != nil {
+		return fmt.Errorf("npm is not installed. Please install Node.js and npm first from https://nodejs.org/")
+	}
 
 	// Try to install with npm
 	installCmd := exec.Command("npm", "install", "-g", "@augmentcode/auggie")
-	var stderr bytes.Buffer
-	installCmd.Stderr = &stderr
+	installCmd.Stdout = os.Stdout
+	installCmd.Stderr = os.Stderr
+
+	fmt.Println("Running: npm install -g @augmentcode/auggie")
+	fmt.Println("This may take a minute...")
 
 	if err := installCmd.Run(); err != nil {
-		return fmt.Errorf("failed to install Auggie CLI: %v\nstderr: %s", err, stderr.String())
+		fmt.Println("\n❌ Installation failed")
+		fmt.Println("\nYou can try installing manually:")
+		fmt.Println("  npm install -g @augmentcode/auggie")
+		fmt.Println("\nOr with yarn:")
+		fmt.Println("  yarn global add @augmentcode/auggie")
+		return fmt.Errorf("failed to install Auggie CLI: %v", err)
 	}
 
-	fmt.Println("✓ Auggie CLI installed successfully!")
+	fmt.Println("\n✓ Auggie CLI installed successfully!")
+	fmt.Println("\nNext step: Login to Augment Code")
+	fmt.Println("Run: ./autotest login")
 	return nil
 }
 
@@ -305,14 +341,18 @@ func GenerateTestWithAugmentCLI(filePath string, code string, framework string, 
 	prompt := buildAugmentPrompt(filePath, code, framework, projectContext)
 
 	fmt.Printf("  ⏳ Generating tests for %s with Auggie...\n", filePath)
+	fmt.Println("  💭 Auggie AI is thinking...")
 
 	// Call Auggie CLI with -p (print mode) flag
-	// Show Auggie's reasoning in real-time
 	cmd := exec.Command("auggie", "-p", prompt)
+
+	// Capture stdout but show stderr in real-time for progress updates
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 
-	// Capture stdout to get the generated test code
-	output, err := cmd.Output()
+	err := cmd.Run()
+	output := stdout.Bytes()
 	if err != nil {
 		fmt.Printf("  ❌ Failed to generate tests for %s: %v\n", filePath, err)
 		return "", fmt.Errorf("auggie CLI failed: %v", err)

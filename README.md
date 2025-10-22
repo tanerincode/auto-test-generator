@@ -37,10 +37,15 @@ Before using `autotest`, you need:
 
 1. **Node.js project** with TypeScript/TSX files
 2. **Jest or Vitest** installed as a dev dependency
-3. **Auggie CLI** (automatically installed on first run)
-   - Requires authentication: run `./autotest login` first
+3. **AI Provider** (choose one):
+   - **Auggie CLI** (default) - Automatically installed on first run
+     - Requires authentication: run `./autotest login` first
+   - **Cursor IDE** - Download from [cursor.sh](https://cursor.sh/)
+     - Requires `cursor` command in PATH
 
 ## Quick Start
+
+### With Auggie CLI (Default)
 
 ```bash
 # 1. Login to Augment Code (one-time setup)
@@ -51,6 +56,19 @@ Before using `autotest`, you need:
 
 # 3. Preview what will be generated (dry-run)
 ./autotest -root ./your-project -allow-dirty -dry-run
+```
+
+### With Cursor AI
+
+```bash
+# 1. Install Cursor IDE from https://cursor.sh/ (if not already installed)
+# The tool will prompt you to install if needed
+
+# 2. Generate tests using Cursor AI
+./autotest -root ./your-project -provider cursor -allow-dirty
+
+# 3. Preview what will be generated (dry-run)
+./autotest -root ./your-project -provider cursor -allow-dirty -dry-run
 ```
 
 ## Usage
@@ -104,6 +122,11 @@ Before using `autotest`, you need:
   - If set, fails if coverage is below this percentage after generation
   - Runs test suite with coverage after generation
 
+- **`-provider string`** (default: `auggie`)
+  - AI provider for test generation: `auggie` or `cursor`
+  - `auggie` - Uses Auggie CLI (requires login)
+  - `cursor` - Uses Cursor IDE (requires Cursor installation)
+
 ### Examples
 
 #### Login (first time setup)
@@ -142,28 +165,83 @@ Before using `autotest`, you need:
 ./autotest -root ./my-project -min-coverage 80 -allow-dirty
 ```
 
+#### Use Cursor AI instead of Auggie
+
+```bash
+./autotest -root ./my-project -provider cursor -allow-dirty
+```
+
 #### Use all flags together
 
 ```bash
 ./autotest -root ./src -fw vitest -out tests -changed-only -dry-run -max-workers 8 -allow-dirty
 ```
 
+#### Use Cursor AI with Vitest and custom output directory
+
+```bash
+./autotest -root ./src -provider cursor -fw vitest -out tests -allow-dirty
+```
+
 ## AI-Powered Test Generation
 
-The tool uses **Auggie CLI** by default for intelligent, AI-powered test generation.
+The tool supports multiple AI providers for intelligent test generation. Choose the one that works best for you!
+
+### Supported Providers
+
+#### 1. **Auggie CLI** (Default)
+
+Powered by Augment Code, provides high-quality AI test generation.
+
+**Setup:**
+```bash
+# One-time login
+./autotest login
+
+# This will:
+# 1. Install Auggie CLI automatically (if not installed)
+# 2. Open browser for authentication
+# 3. Save credentials for future use
+```
+
+**Usage:**
+```bash
+# Generate tests (uses Auggie by default)
+./autotest -root ./my-project -allow-dirty
+
+# Or explicitly specify provider
+./autotest -root ./my-project -provider auggie -allow-dirty
+```
+
+#### 2. **Cursor AI**
+
+Integrated with Cursor IDE for seamless test generation within your development environment.
+
+**Setup:**
+```bash
+# 1. Install Cursor IDE from https://cursor.sh/ (if not already)
+# The tool will prompt for installation if needed
+
+# 2. Ensure 'cursor' command is in your PATH
+```
+
+**Usage:**
+```bash
+# Generate tests with Cursor AI
+./autotest -root ./my-project -provider cursor -allow-dirty
+```
 
 ### How It Works
 
-1. **Authentication**: One-time login to Augment Code
-2. **Code Analysis**: Auggie analyzes your TypeScript source code
-3. **Context Understanding**: Understands code semantics, dependencies, and patterns
-4. **Test Generation**: Creates comprehensive tests with:
+1. **Code Analysis**: AI provider analyzes your TypeScript source code
+2. **Context Understanding**: Understands code semantics, dependencies, and patterns
+3. **Test Generation**: Creates comprehensive tests with:
    - Happy path scenarios
    - Edge cases (null, undefined, empty inputs)
    - Error handling
    - Async operation handling
    - Proper mocking of dependencies
-5. **Quality Assurance**: Generated tests are realistic and meaningful
+4. **Quality Assurance**: Generated tests are realistic and meaningful
 
 ### Benefits
 
@@ -172,20 +250,18 @@ The tool uses **Auggie CLI** by default for intelligent, AI-powered test generat
 - **Time Savings**: Generates tests in seconds that would take minutes to write manually
 - **Learning Tool**: See how to properly structure tests for your code
 - **Consistency**: All tests follow best practices and patterns
+- **Provider Choice**: Use whichever AI provider you prefer or have access to
 
-### Authentication
+### Choosing a Provider
 
-```bash
-# First time setup
-./autotest login
-
-# This will:
-# 1. Install Auggie CLI (if not already installed)
-# 2. Open browser for authentication
-# 3. Save credentials for future use
-```
-
-After login, the tool will use Auggie CLI automatically for all test generation.
+| Feature | Auggie CLI | Cursor AI |
+|---------|-----------|-----------|
+| **Installation** | Auto-installed via npm | Requires Cursor IDE |
+| **Authentication** | One-time login required | Uses Cursor IDE auth |
+| **Cost** | Free tier available | Included with Cursor |
+| **Speed** | Fast (10-30s per file) | Fast |
+| **Quality** | High | High |
+| **Best For** | Standalone CLI workflows | Cursor IDE users |
 
 ## Architecture & How It Works
 
@@ -436,6 +512,42 @@ If the tool can't detect your test framework:
 ./autotest -root ./your-project -fw jest -allow-dirty
 # or
 ./autotest -root ./your-project -fw vitest -allow-dirty
+```
+
+### Cursor CLI Not Working
+
+If Cursor CLI is not responding or giving errors:
+
+```bash
+# 1. Verify Cursor is installed
+cursor --version
+
+# 2. If not installed, download from https://cursor.sh/
+
+# 3. Ensure cursor command is in PATH
+which cursor  # On macOS/Linux
+where cursor  # On Windows
+
+# 4. Try fallback to Auggie if Cursor doesn't work
+./autotest -root ./your-project -provider auggie -allow-dirty
+```
+
+**Note:** Cursor CLI integration attempts multiple invocation methods and falls back to basic test generation if all fail.
+
+### Provider Installation Prompts
+
+The tool will interactively prompt you to install missing AI providers:
+
+- **Auggie CLI**: Automatically installed via npm if you agree
+- **Cursor IDE**: Opens download page if not installed
+
+You can also install manually:
+```bash
+# Auggie CLI
+npm install -g @augmentcode/auggie
+
+# Cursor IDE
+# Download from https://cursor.sh/
 ```
 
 ## License

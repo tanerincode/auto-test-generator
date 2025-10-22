@@ -23,6 +23,7 @@ func main() {
 	maxWorkers := flag.Int("max-workers", runtime.NumCPU(), "Maximum concurrent workers")
 	minCoverage := flag.Float64("min-coverage", 0, "Minimum coverage threshold (0-100); fail if below")
 	allowDirty := flag.Bool("allow-dirty", false, "Allow running with dirty working tree")
+	provider := flag.String("provider", "auggie", "AI provider: auggie, cursor")
 
 	flag.Parse()
 
@@ -44,6 +45,7 @@ func main() {
 			fmt.Println("  ./autotest login")
 			fmt.Println("  ./autotest -root ./my-project -allow-dirty")
 			fmt.Println("  ./autotest -root ./my-project -allow-dirty -dry-run")
+			fmt.Println("  ./autotest -root ./my-project -provider cursor -allow-dirty")
 			fmt.Println("\nFlags:")
 			flag.PrintDefaults()
 			return
@@ -79,6 +81,9 @@ func main() {
 	if *maxWorkers < 1 {
 		log.Fatalf("max-workers must be at least 1")
 	}
+	if *provider != "auggie" && *provider != "cursor" {
+		log.Fatalf("invalid provider: %s (must be auggie or cursor)", *provider)
+	}
 
 	// Check git status unless --allow-dirty
 	if !*allowDirty {
@@ -102,10 +107,18 @@ func main() {
 		fmt.Printf("Detected framework: %s\n", framework)
 	}
 
-	// Setup Auggie CLI
-	fmt.Println("🤖 Using Auggie CLI for AI-powered test generation...")
-	if err := gen.EnsureAuggieCLIInstalled(); err != nil {
-		log.Fatalf("failed to setup Auggie CLI: %v", err)
+	// Setup AI provider
+	switch *provider {
+	case "auggie":
+		fmt.Println("🤖 Using Auggie CLI for AI-powered test generation...")
+		if err := gen.EnsureAuggieCLIInstalled(); err != nil {
+			log.Fatalf("failed to setup Auggie CLI: %v", err)
+		}
+	case "cursor":
+		fmt.Println("🤖 Using Cursor AI for test generation...")
+		if err := gen.EnsureCursorCLIInstalled(); err != nil {
+			log.Fatalf("failed to setup Cursor CLI: %v\nPlease install Cursor IDE from https://cursor.sh/", err)
+		}
 	}
 
 	// Scan for files needing tests
@@ -152,8 +165,18 @@ func main() {
 			testPath := scan.DefaultTestPath(wi.path, framework, *out)
 			relPath, _ := filepath.Rel(*root, wi.path)
 
-			// Generate test with Auggie CLI
-			testCode, err := gen.GenerateTestWithAugmentCLI(relPath, wi.code, framework, "")
+			// Generate test with selected AI provider
+			var testCode string
+			var err error
+
+			switch *provider {
+			case "auggie":
+				testCode, err = gen.GenerateTestWithAugmentCLI(relPath, wi.code, framework, "")
+			case "cursor":
+				testCode, err = gen.GenerateTestWithCursorCLI(relPath, wi.code, framework, "")
+			default:
+				err = fmt.Errorf("unsupported provider: %s", *provider)
+			}
 
 			if err != nil {
 				results <- gen.TestResult{
